@@ -68,7 +68,7 @@ class apb_slave_wr_rd_seq extends apb_slave_base_sequence;
         // ACCESS
         `uvm_do_with(req, {
             req.PSELx == 1; req.PENABLE == 1;
-            req.PWRITE == 0; req.PADDR == tx1.addr;
+            req.PWRITE == 0; req.PADDR == tx1.PADDR;
         })
         
         read_data = req.PRDATA;
