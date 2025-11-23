@@ -17,6 +17,8 @@ class apb_slave_base_sequence extends uvm_sequence #(apb_slave_txn);
         `uvm_fatal(get_type_name(), "Randomization Failure")
 	  */
 	  finish_item(req);
+	  trans.print();
+
   endtask
 
 endclass: apb_sequence
