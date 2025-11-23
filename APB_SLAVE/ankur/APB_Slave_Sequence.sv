@@ -12,6 +12,10 @@ class apb_slave_base_sequence extends uvm_sequence #(apb_slave_txn);
 	  req = apb_seq_item :: type_id :: create("req");
 	  start_item(req);
 	  assert(req.randomize());
+	     // Randomize transaction
+     /* if (!trans.randomize())
+        `uvm_fatal(get_type_name(), "Randomization Failure")
+	  */
 	  finish_item(req);
   endtask
 
