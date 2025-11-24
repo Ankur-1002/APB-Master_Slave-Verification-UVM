@@ -1,15 +1,19 @@
+// `define ADDR_WIDTH 32
+// `define DATA_WIDTH 32
+// `define MEM_DEPTH 256 
+
 interface master_intf(input bit PCLK,PRESETn);
     logic PSELx;
     logic PENABLE;
     logic PWRITE;
-    logic PADDR;
-    logic PWDATA;
-    logic PRDATA;
+  	logic [`ADDR_WIDTH-1:0] PADDR;
+  	logic [`DATA_WIDTH-1:0] PWDATA;
+  	logic [`DATA_WIDTH-1:0] PRDATA;
     logic PREADY;
     logic PSLVERR;
 
   clocking mdrv_cb@(posedge PCLK);
-	default input #1step output #1ns;
+	default input #1 output #0;
     output PSELx;
     output PENABLE;
     output PWRITE;
@@ -21,7 +25,7 @@ interface master_intf(input bit PCLK,PRESETn);
   endclocking  
   
   clocking mmon_cb@(posedge PCLK);
-	default input #1step;	
+	default input #1;	
     input PSELx;
     input PENABLE;
     input PWRITE;

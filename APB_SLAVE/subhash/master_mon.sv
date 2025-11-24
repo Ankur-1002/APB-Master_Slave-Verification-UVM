@@ -40,7 +40,8 @@ class master_mon extends uvm_monitor;
 		txn_1.PRDATA 	<= mvif.mmon_cb.PRDATA;
 		@(mvif.mmon_cb);
 		//monitor_port.write(txn_1);
-		$display($time," monitor_data=%0d",txn_1.prdata);
+      //$display($time," monitor_data=%0d",txn_1.PRDATA);
+//       txn_1.print();
 	endtask
 
 endclass
