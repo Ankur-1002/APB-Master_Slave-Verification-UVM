@@ -1,5 +1,5 @@
 module apb_master 
-	import apb_pkg::*
+	import apb_pkg::*;
 (
     // Global Signals
     input logic Pclk,
