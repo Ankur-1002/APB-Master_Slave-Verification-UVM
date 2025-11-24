@@ -170,5 +170,58 @@ class apb_random_seq extends apb_base_sequence;
                           trans.read_paddr), UVM_LOW)
         end
     endtask
+              
+  // Error Response for Read and Write
+  class apb_single_read_err_seq extends apb_base_sequence;
+
+  `uvm_object_utils(apb_single_read_err_seq)
+
+  function new(string name = "apb_single_read_err_seq");
+    super.new(name);
+  endfunction
+
+  task body();
+    apb_transaction trans;
+
+    trans = apb_transaction::type_id::create("trans");
+    start_item(trans);
+
+    assert(trans.randomize() with {
+      write_read == 1'b0;   
+      transfer   == 1'b1;   
+      slverr     == 1'b1; 
+    });
+
+    finish_item(trans);
+
+    `uvm_info(get_type_name(),$sformatf("READ ERROR: Addr=0x%0h",trans.read_paddr), UVM_LOW)
+  endtask
+    
+endclass
+
+class apb_single_write_err_seq extends apb_base_sequence;
+
+  `uvm_object_utils(apb_single_write_err_seq)
+
+  function new(string name = "apb_single_write_err_seq");
+    super.new(name);
+  endfunction
+
+  task body();
+    apb_transaction trans;
+
+    trans = apb_transaction::type_id::create("trans");
+    start_item(trans);
+
+    assert(trans.randomize() with {
+      write_read == 1'b1;   
+      transfer   == 1'b1;   
+      slverr     == 1'b1; 
+    });
+
+    finish_item(trans);
+
+    `uvm_info(get_type_name(), $sformatf("WRITE ERROR: Addr=0x%0h Data=0x%0h", trans.write_paddr, trans.write_pwdata), UVM_LOW)
+  endtask
     
 endclass
