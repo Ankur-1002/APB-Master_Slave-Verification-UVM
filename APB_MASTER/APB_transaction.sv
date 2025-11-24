@@ -24,7 +24,7 @@ class apb_transaction extends uvm_sequence_item;
     }
     
     constraint transfer_c {
-        transfer == 1'b1;
+        transfer dist {1:80,0:20};
     }
     
     `uvm_object_utils_begin(apb_transaction)
