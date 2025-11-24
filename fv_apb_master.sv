@@ -30,10 +30,11 @@ module apb_master_assertions
     // ============================================================================
     // Reset Assertions
     // ============================================================================
-    
+    default clocking def_clk @(posedge Pclk) ; endclocking
+    default disable iff(!Presetn);
     // Assert that all outputs are reset properly
     property reset_outputs;
-        @(posedge Pclk) !Presetn |-> (Penable == 0 && Psel == 0 && 
+         !Presetn |-> (Penable == 0 && Psel == 0 && 
                                        Paddr == 0 && Pwrite == 0 && 
                                        Pwdata == 0 && Prdata_out == 0 && 
                                        slverr_out == 0);
@@ -43,7 +44,7 @@ module apb_master_assertions
 
     // Assert reset drives state to IDLE
     property reset_state;
-        @(posedge Pclk) !Presetn |=> (current_state == IDLE);
+         !Presetn |=> (current_state == IDLE);
     endproperty
     assert_reset_state: assert property(reset_state)
         else $error("Reset assertion failed: State not IDLE after reset");
@@ -54,7 +55,7 @@ module apb_master_assertions
     
     // IDLE to SETUP transition when transfer is asserted
     property idle_to_setup;
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == IDLE && transfer) |=> (current_state == SETUP);
     endproperty
     assert_idle_to_setup: assert property(idle_to_setup)
@@ -62,7 +63,7 @@ module apb_master_assertions
 
     // IDLE remains in IDLE when no transfer
     property idle_to_idle;
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == IDLE && !transfer) |=> (current_state == IDLE);
     endproperty
     assert_idle_to_idle: assert property(idle_to_idle)
@@ -70,7 +71,7 @@ module apb_master_assertions
 
     // SETUP always transitions to ACCESS
     property setup_to_access;
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == SETUP) |=> (current_state == ACCESS);
     endproperty
     assert_setup_to_access: assert property(setup_to_access)
@@ -78,7 +79,7 @@ module apb_master_assertions
 
     // ACCESS to IDLE on error
     property access_to_idle_on_error;
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == ACCESS && Pslverr) |=> (current_state == IDLE);
     endproperty
     assert_access_to_idle_error: assert property(access_to_idle_on_error)
@@ -86,7 +87,7 @@ module apb_master_assertions
 
     // ACCESS to SETUP when ready and transfer
     property access_to_setup;
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == ACCESS && !Pslverr && Pready && transfer) |=> 
         (current_state == SETUP);
     endproperty
@@ -95,7 +96,7 @@ module apb_master_assertions
 
     // ACCESS to IDLE when ready and no transfer
     property access_to_idle;
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == ACCESS && !Pslverr && Pready && !transfer) |=> 
         (current_state == IDLE);
     endproperty
@@ -104,7 +105,7 @@ module apb_master_assertions
 
     // ACCESS remains in ACCESS when not ready
     property access_to_access;
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == ACCESS && !Pslverr && !Pready) |=> 
         (current_state == ACCESS);
     endproperty
@@ -117,7 +118,7 @@ module apb_master_assertions
     
     // Penable is 0 in IDLE state
     property penable_idle;
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == IDLE) |-> (Penable == 0);
     endproperty
     assert_penable_idle: assert property(penable_idle)
@@ -125,7 +126,7 @@ module apb_master_assertions
 
     // Penable is 0 in SETUP state
     property penable_setup;
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == SETUP) |-> (Penable == 0);
     endproperty
     assert_penable_setup: assert property(penable_setup)
@@ -133,7 +134,7 @@ module apb_master_assertions
 
     // Penable is 1 in ACCESS state
     property penable_access;
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == ACCESS) |-> (Penable == 1);
     endproperty
     assert_penable_access: assert property(penable_access)
@@ -141,7 +142,7 @@ module apb_master_assertions
 
     // Psel is 0 in IDLE state
     property psel_idle;
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == IDLE) |-> (Psel == 0);
     endproperty
     assert_psel_idle: assert property(psel_idle)
@@ -149,7 +150,7 @@ module apb_master_assertions
 
     // Psel is 1 in SETUP and ACCESS states
     property psel_active;
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == SETUP || current_state == ACCESS) |-> (Psel == 1);
     endproperty
     assert_psel_active: assert property(psel_active)
@@ -161,7 +162,7 @@ module apb_master_assertions
     
     // Address stability during ACCESS phase
     property addr_stable_in_access;
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == SETUP) |=> 
         (current_state == ACCESS) throughout ($stable(Paddr));
     endproperty
@@ -170,7 +171,7 @@ module apb_master_assertions
 
     // Pwrite stability during ACCESS phase
     property pwrite_stable_in_access;
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == SETUP) |=> 
         (current_state == ACCESS) throughout ($stable(Pwrite));
     endproperty
@@ -179,7 +180,7 @@ module apb_master_assertions
 
     // Address matches write address when WRITE_READ is 1
     property addr_write_match;
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (next_state == SETUP && WRITE_READ) |=> (Paddr == APB_write_paddr);
     endproperty
     assert_addr_write: assert property(addr_write_match)
@@ -187,7 +188,7 @@ module apb_master_assertions
 
     // Address matches read address when WRITE_READ is 0
     property addr_read_match;
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (next_state == SETUP && !WRITE_READ) |=> (Paddr == APB_read_paddr);
     endproperty
     assert_addr_read: assert property(addr_read_match)
@@ -195,7 +196,7 @@ module apb_master_assertions
 
     // Pwrite matches WRITE_READ in SETUP state
     property pwrite_match;
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (next_state == SETUP) |=> (Pwrite == WRITE_READ);
     endproperty
     assert_pwrite: assert property(pwrite_match)
@@ -207,7 +208,7 @@ module apb_master_assertions
     
     // Write data stability during ACCESS phase
     property wdata_stable_in_access;
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == SETUP && Pwrite) |=> 
         (current_state == ACCESS) throughout ($stable(Pwdata));
     endproperty
@@ -216,7 +217,7 @@ module apb_master_assertions
 
     // Write data matches input data
     property wdata_match;
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (next_state == SETUP && WRITE_READ) |=> (Pwdata == APB_write_data);
     endproperty
     assert_wdata: assert property(wdata_match)
@@ -224,7 +225,7 @@ module apb_master_assertions
 
     // Read data captured when Pready and read operation
     property rdata_capture;
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == ACCESS && Pready && !Pwrite) |=> 
         (Prdata_out == $past(Prdata_in));
     endproperty
@@ -233,7 +234,7 @@ module apb_master_assertions
 
     // Slave error captured when Pready
     property slverr_capture;
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == ACCESS && Pready) |=> 
         (slverr_out == $past(Pslverr));
     endproperty
@@ -246,42 +247,42 @@ module apb_master_assertions
     
     // Cover all state transitions
     cover_idle_to_setup: cover property(
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == IDLE && transfer) ##1 (current_state == SETUP)
     );
 
     cover_setup_to_access: cover property(
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == SETUP) ##1 (current_state == ACCESS)
     );
 
     cover_access_to_idle: cover property(
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == ACCESS && Pready && !transfer) ##1 (current_state == IDLE)
     );
 
     cover_back_to_back_transfers: cover property(
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == ACCESS && Pready && transfer) ##1 (current_state == SETUP)
     );
 
     cover_write_operation: cover property(
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == SETUP && Pwrite) ##1 (current_state == ACCESS)
     );
 
     cover_read_operation: cover property(
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == SETUP && !Pwrite) ##1 (current_state == ACCESS)
     );
 
     cover_slave_error: cover property(
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == ACCESS && Pslverr)
     );
 
     cover_wait_states: cover property(
-        @(posedge Pclk) disable iff(!Presetn)
+         
         (current_state == ACCESS && !Pready) [*3:5] ##1 (Pready)
     );
 
