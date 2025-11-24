@@ -1,5 +1,5 @@
 module apb_master 
-	import apb_pkg::*
+	import apb_pkg::*;
 (
     // Global Signals
     input logic Pclk,
@@ -31,7 +31,7 @@ module apb_master
 
     logic [2:0] next_state, current_state;
     
-     Declaration of States (One-Hot Encoding)
+     //Declaration of States (One-Hot Encoding)
      localparam [1:0] IDLE   = 2'b00;
      localparam [1:0] SETUP  = 2'b01;
      localparam [1:0] ACCESS = 2'b10;
