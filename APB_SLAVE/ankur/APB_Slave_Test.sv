@@ -13,7 +13,7 @@ class apb_test extends uvm_test;
   task run_phase(uvm_phase phase);
     super.run_phase(phase);
     phase.raise_objection(this);
-    sequences.start(env.agent.sequencer);
+    sequences.start(env.agent.sequencer);    //give the name of env and agent
     phase.drop_objection(this);
   endtask
 endclass
