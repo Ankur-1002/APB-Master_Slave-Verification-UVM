@@ -6,8 +6,8 @@ class apb_slave_txn extends uvm_sequence_item;
   rand bit [`DATA_WIDTH-1:0] PWDATA;   // Write Data
        bit [`DATA_WIDTH-1:0] PRDATA;   // Read Data (from DUT)
        bit PREADY;                     // Ready signal
-       bit PSEL;                       // Select signal
-       bit PENABLE;                    // Enable signal
+  rand bit PSEL;                       // Select signal
+  rand bit PENABLE;                    // Enable signal
        bit PSLVERR;                    // Error response
   rand bit PWRITE;                     // Write control (1=Write, 0=Read)
 
