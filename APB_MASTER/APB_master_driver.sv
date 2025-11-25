@@ -84,7 +84,7 @@ class apb_driver extends uvm_driver #(apb_transaction);
         end
         
         @(posedge vif.Pclk);
-        vif.Pready <= 1'b0;
+        //vif.Pready <= 1'b0;
         vif.Pslverr <= 1'b0;
         
     endtask
