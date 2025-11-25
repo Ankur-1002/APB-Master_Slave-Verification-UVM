@@ -94,3 +94,47 @@ class apb_random_test extends apb_base_test;
     endtask
     
 endclass
+
+class apb_err_write_test extends apb_base_test;
+    
+  `uvm_component_utils(apb_err_write_test)
+    
+  function new(string name = "apb_err_write_test", uvm_component parent = null);
+        super.new(name, parent);
+    endfunction
+    
+    task run_phase(uvm_phase phase);
+        apb_single_write_err_seq seq;
+        
+        phase.raise_objection(this);
+        
+        seq = apb_single_write_err_seq::type_id::create("seq");
+        seq.start(env.agent.sequencer);
+        
+        #100;
+        phase.drop_objection(this);
+    endtask
+    
+endclass
+
+class apb_err_read_test extends apb_base_test;
+    
+  `uvm_component_utils(apb_err_read_test)
+    
+  function new(string name = "apb_err_write_test", uvm_component parent = null);
+        super.new(name, parent);
+    endfunction
+    
+    task run_phase(uvm_phase phase);
+        apb_single_read_err_seq seq;
+        
+        phase.raise_objection(this);
+        
+        seq = apb_single_read_err_seq::type_id::create("seq");
+        seq.start(env.agent.sequencer);
+        
+        #100;
+        phase.drop_objection(this);
+    endtask
+    
+endclass
