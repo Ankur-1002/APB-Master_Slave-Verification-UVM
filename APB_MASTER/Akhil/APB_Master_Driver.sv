@@ -1,66 +1,57 @@
 class apb_driver extends uvm_driver #(apb_transaction);
-	
-	`uvm_component_utils(apb_driver)
+    
+    `uvm_component_utils(apb_driver)
+    apb_master_config m_cfg;
+    virtual apb_if vif;
+    
+    function new(string name = "apb_driver", uvm_component parent = null);
+        super.new(name, parent);
+    endfunction
+    
+    function void build_phase(uvm_phase phase);
+        super.build_phase(phase);
+        if(!uvm_config_db#(apb_master_config)::get(this, "", "apb_master_config", m_cfg))
+            `uvm_fatal(get_type_name(), "Virtual interface not found!")
+    endfunction
 
-	apb_transaction req;
-	virtual apb_if m_vif;
+	function void connect_phase(uvm_phase phase);
+		vif = m_cfg.vif;
+	endfunction
 
-		function new(string name = "apb_driver", uvm_component parent);
-			super.new(name, parent);
-		endfunction
-
-		function void build_phase(uvm_phase phase);
-			super.build_phase(phase);
-			req = apb_transaction :: type_id :: create("req");
-		endfunction
-
-		function void connect_phase(uvm_phase phase);
-			super.connect_phase(phase);
-		endfunction
-
-		task run_phase(uvm_phase phase);
+    
+    task run_phase(uvm_phase phase);
 			super.run_phase(phase);
 				forever
 					begin
 						seq_item_port.get_next_item(req);
+						`uvm_info(get_full_name(),"Wait for the sequence item", UVM_MEDIUM)
 						drive_item(req);
-						deq_item_port.item_done();
+						seq_item_port.item_done();
 					end
 		endtask
 
-		task drive_item(apb_transaction item);
-			@(m_vif.mdrv_cb);
-			m_vif.mdrv_cb.Paddr <= item.Paddr;
-			m_vif.mdrv_cb.Pwrite <= item.Pwrite;
-			m_vif.mdrv_cb.Pwdara <= item.Pwdata;
-			m_vif.mdrv_cb.Pwrite <= item.Pwrite;
-			m_vif.mdrv_cb.Psel <= 1;
-			m_vif.mdrv_cb.Penable <= 0;
-		//    	m_vif.mdrv_cb.transfer <= 1;
+		task drive_item(apb_transaction req);
+			@(vif.mdrv_cb);
+			vif.mdrv_cb.PADDR <= req.paddr;
+			vif.mdrv_cb.PWRITE <= req.pwrite;
+			vif.mdrv_cb.PWDATA <= req.pwdata;
+			vif.mdrv_cb.PWRITE <= req.pwrite;
+			vif.mdrv_cb.PSELx <= req.pselx;
+			vif.mdrv_cb.PENABLE <= 0;
 
-			@(m_vif.mdrv_cb);
-			m_vif.mdrv_cb.Penable <= 1;
+			@(vif.mdrv_cb);
+			vif.mdrv_cb.PENABLE <= 1;
 
-			do
+		/*	do
 				begin
-					@(m_vif.mdrv_cb)
+					@(vif.mdrv_cb);
 				end
 			while
-				(!m_vif.mdrv_cb.Pready);
+				(!vif.mdrv_cb.PREADY);*/
+			wait(!vif.mdrv_cb.PREADY);
 
-			@(m_vif.mdrv_cb)// Without Transfer
-				m_vif.mdrv_cb.Penable <= 0;
-		/*With Transfer Signal		
-			if(m_vif.mdrv_cb.Pready && m_vif.mdrv_cb.transfer)
-				begin
-					m_vif.mdrv_cb.Psel <= 1;
-					m_vif.mdrv_cb.Penable <= 0;
-				end
-			else
-				begin
-					m_vif.mdrv_cb.Psel <= 0;
-					m_vif.mdrv_cb.Penable <= 0;
-				end*/
-		endtask
+			@(vif.mdrv_cb)// Without Transfer
+				vif.mdrv_cb.PENABLE <= 0;
+			endtask
 
 endclass
