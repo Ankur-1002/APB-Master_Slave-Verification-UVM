@@ -1,24 +1,27 @@
 class apb_monitor extends uvm_monitor;
-
-	`uvm_component_utils(apb_monitor)
-	
-	apb_transaction data_sent;
-	virtual apb_if m_vif;
-
-	function new(string name = "apb_monitor", uvm_component parent);
-			super.new(name, parent);
-		endfunction
-
-	function void build_phase(uvm_phase phase);
-		super.build_phase(phase);
-		data_sent = apb_transaction :: type_id :: create("data_sent");
-	endfunction
+    
+    `uvm_component_utils(apb_monitor)
+    apb_master_config m_cfg;
+    virtual apb_if vif;
+    uvm_analysis_port #(apb_transaction) item_collected_port;
+    apb_transaction trans;
+   
+    function new(string name = "apb_monitor", uvm_component parent = null);
+        super.new(name, parent);
+        item_collected_port = new("item_collected_port", this);
+    endfunction
+    
+    function void build_phase(uvm_phase phase);
+        super.build_phase(phase);
+        if(!uvm_config_db#(apb_master_config)::get(this, "", "apb_master_config", m_cfg))
+            `uvm_fatal(get_type_name(), "Virtual interface not found!")
+    endfunction
 
 	function void connect_phase(uvm_phase phase);
-		super.connect_phase(phase);
+		vif = m_cfg.vif;
 	endfunction
-
-	task run_phase(uvm_phase phase);
+    
+   task run_phase(uvm_phase phase);
 		super.run_phase(phase);
 			forever
 				begin
@@ -27,24 +30,30 @@ class apb_monitor extends uvm_monitor;
 	endtask
 
 	task collect_data();
-		@(m_vif.mmon_cb) // Setup Phase Sampled
-			if(m_vif.mmon_cb.Psel && !m_vif.mmon_cb.Penable)
+		trans = apb_transaction::type_id::create("trans", this);	
+		@(vif.mmon_cb)// Setup Phase Sampled
+		`uvm_info(get_full_name(),"Entering into the monitor run phase", UVM_MEDIUM)
+			if(vif.mmon_cb.PSELx && !vif.mmon_cb.PENABLE)
 				begin
-					data_sent.Pwrite = m_vif.mmon_cb.Pwrite;
-					data_sent.Paddr = m_vif.mmon_cb.Paddr;
-					data_sent.Pwdata = m_vif.mmon_cb.Pwdata;
-					data_sent.Psel = m_vif.mmon_cb.Psel;
+					trans.pwrite = vif.mmon_cb.PWRITE;
+					trans.paddr = vif.mmon_cb.PADDR;
+					trans.pwdata = vif.mmon_cb.PWDATA;
+					trans.pselx = 1;
 				end
+		`uvm_info(get_full_name(), " Entering to the access phase", UVM_MEDIUM)
+		@(vif.mmon_cb) 
+			wait(vif.mmon_cb.PENABLE);
+			wait(vif.mmon_cb.PREADY);
+		`uvm_info(get_full_name(), " Got PREADY and PENABLE", UVM_MEDIUM)	
+			trans.pready = vif.mmon_cb.PREADY;
+			trans.penable = vif.mmon_cb.PENABLE;
 
-		@(m_vif.mmon_cb) 
-			wait(m_vif.mmon_cb.Penable);
-			wait(m_vif.mmon_cb.Pready);
-			
-			data_sent.Pready = m_vif.mmon_cb.Pready;
-			data_sent.Penable = m_vif.mmon_cb.Penable;
+			if(!vif.mmon_cb.PWRITE)
+				trans.prdata = vif.mmon_cb.PRDATA;
 
-			if(!m_vif.mmon_cb.Pwrite)
-				data_sent.Prdata = m_vif.mmon_cb.Prdata;
-		//Screboard Logic 
-	endtask
-endclass 
+		 item_collected_port.write(trans);
+        `uvm_info(get_type_name(), $sformatf("Transaction Monitored:\n%s", 
+                  trans.sprint()), UVM_HIGH)
+       
+	endtask        
+endclass
