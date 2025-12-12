@@ -1,131 +1,89 @@
-module apb_master 
-	import apb_pkg::*;
-(
-    // Global Signals
-    input logic Pclk,
-    input logic Presetn,
-    
-    // Input from Previous System
-    input logic [`ADDR_WIDTH-1:0] APB_write_paddr,
-    input logic [`ADDR_WIDTH-1:0] APB_read_paddr,
-    input logic WRITE_READ,
-    input logic [`DATA_WIDTH-1:0] APB_write_data,
-    input logic transfer,
-    
-    // Input from Slave
-    input logic [`DATA_WIDTH-1:0] Prdata_in,
-    input logic Pslverr,
-    input logic Pready,
-    
-    // Output to Previous System
-    output logic [`DATA_WIDTH-1:0] Prdata_out,
-    output logic slverr_out,
-    
-    // Output to Slave
-    output logic [`ADDR_WIDTH-1:0] Paddr,
-    output logic [`DATA_WIDTH-1:0] Pwdata,
-    output logic Pwrite,
-    output logic Psel,
-    output logic Penable
-);
+`define ADDR_WIDTH 32
+`define DATA_WIDTH 32
 
-    logic [2:0] next_state, current_state;
-    
-     //Declaration of States (One-Hot Encoding)
-     localparam [1:0] IDLE   = 2'b00;
-     localparam [1:0] SETUP  = 2'b01;
-     localparam [1:0] ACCESS = 2'b10;
 
-    // Next State Logic
-    always_comb begin
-        case (current_state)
-            IDLE: begin
-                if (transfer) begin
-                    next_state = SETUP;
-                end
-                else begin
-                    next_state = IDLE;
-                end
-            end
-            SETUP: begin
-                next_state = ACCESS;
-            end
-            ACCESS: begin
-                if (Pslverr) begin
-                    next_state = IDLE;
-                end 
-                else begin
-                    if (Pready & transfer) begin
-                        next_state = SETUP;
-                    end 
-                    else if (Pready & !transfer) begin
-                        next_state = IDLE;
-                    end
-                    else begin
-                        next_state = ACCESS;
-                    end
-                end
-            end
-            default: begin
-                next_state = IDLE;
-            end
-        endcase
+
+module apb_master (
+                  input logic pclk,presetn,
+                  input logic pready,pslverr,
+                  input logic[`DATA_WIDTH-1:0]prdata,
+                  input logic[`ADDR_WIDTH-1:0]write_addr,read_addr,
+                  input logic[`DATA_WIDTH-1:0]write_data,
+                  input logic rd_wr,transfer,
+                  output logic penable,pwrite,
+                  output logic pselx,
+                  output logic[`ADDR_WIDTH-1:0]paddr,
+                  output logic[`DATA_WIDTH-1:0]pwdata,read_data);
+ 
+  typedef enum logic [1:0]{IDLE=2'b00,SETUP=2'b01,ACCESS=2'b10} state;
+  state ps,ns;
+ 
+  always@(posedge pclk or negedge presetn)
+    begin
+      if(!presetn)
+        ps<=IDLE;
+      else
+        ps<=ns;
     end
-
-    // State Memory
-    always_ff @(posedge Pclk or negedge Presetn) begin
-        if (!Presetn) begin
-            current_state <= IDLE;
-        end else begin
-            current_state <= next_state;
-        end
-    end
-
-    // Output Logic
-    always_ff @(posedge Pclk or negedge Presetn) begin
-        if (!Presetn) begin
-            Penable    <= 1'b0;
-            Paddr      <= {`ADDR_WIDTH{1'b0}}; 
-            Pwrite     <= 1'b0;
-            Prdata_out <= {`DATA_WIDTH{1'b0}};
-            slverr_out <= 1'b0;
-            Pwdata     <= {`DATA_WIDTH{1'b0}};
-        end
-        else if (next_state == SETUP) begin
-            Penable <= 1'b0;
-            Paddr   <= WRITE_READ ? APB_write_paddr : APB_read_paddr; 
-            Pwrite  <= WRITE_READ;
-            if (WRITE_READ == 1'b1) begin // WRITE
-                Pwdata <= APB_write_data;
-            end else if (WRITE_READ == 1'b0) begin // READ 
-                // No action needed for read data setup
-            end
-        end
-        else if (next_state == ACCESS) begin
-            Penable <= 1'b1;
-            if (Pready == 1'b1) begin
-                if (WRITE_READ == 1'b0) begin
-                    Prdata_out <= Prdata_in;
-                end
-                slverr_out <= Pslverr;
-            end
-        end
-        else begin
-            Penable <= 1'b0;
-        end
-    end
-
-    // Psel Logic
-    always_ff @(posedge Pclk or negedge Presetn) begin
-        if (!Presetn) begin
-            Psel <= 1'b0;
-        end
-        else if (next_state == IDLE) begin
-            Psel <= 1'b0;
-        end
-        else begin
-            Psel <= 1'b1;
-        end
-    end
-
+  always@(*)begin
+     if(!presetn)
+       begin
+         penable= 0;
+         pwdata =0;
+         paddr =0;
+         pselx=0;
+       end
+    else
+      begin
+      case(ps)
+      IDLE: begin
+              pselx=0;
+              penable=0;
+              ns=(transfer)? SETUP:IDLE;
+             end
+ 
+      SETUP:begin
+               pselx=1'b1;
+               penable=0;
+               pwrite=rd_wr;
+              if(rd_wr)
+                begin
+                  pwdata=write_data;
+                  paddr=write_addr;
+               end                                  
+              else
+               begin
+                paddr=read_addr; 
+               end
+ 
+               ns=ACCESS;
+             end
+      ACCESS:begin
+               penable =1;
+               pselx = 1;
+               if(pready)
+                 begin 
+		if(transfer&& !pslverr) begin
+			ns=SETUP;
+			if(!rd_wr)
+		     read_data=prdata;
+		end
+		else
+		begin
+		ns=IDLE;
+	        end
+		end
+		else
+	 begin
+	        ns=ACCESS;
+	       end
+ 
+	   end
+	default:ns=IDLE;
+	endcase
+ 
+  end
+end
 endmodule
+
+
