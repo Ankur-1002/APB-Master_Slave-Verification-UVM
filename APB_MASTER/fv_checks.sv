@@ -68,6 +68,43 @@ module fv_apb_top #(
     endproperty
     a_reset_read_data: assert property(p_reset_read_data);
 
+
+
+        // NEW APPROACH (Auxiliary Registers)
+logic fv_write_valid;
+logic [ADDR_WIDTH-1:0] fv_write_addr;
+logic [DATA_WIDTH-1:0] fv_write_data;
+logic fv_write_pending;
+
+always_ff @(posedge APB_pclk or negedge APB_presetn) begin
+    if (!APB_presetn) begin
+        fv_write_valid   <= 1'b0;
+        fv_write_addr    <= '0;
+        fv_write_data    <= '0;
+        fv_write_pending <= 1'b0;
+    end else begin
+        // Capture write transaction in SETUP phase
+        if (m_ps == SETUP && m_pwrite && 
+            (m_paddr != 8'h10) && (m_paddr != 8'h11)) begin
+            fv_write_valid   <= 1'b1;
+            fv_write_addr    <= m_paddr;
+            fv_write_data    <= m_pwdata;
+            fv_write_pending <= 1'b1;
+        end
+        // Clear when transaction completes
+        else if (fv_write_pending && m_ps == ACCESS && m_pready && !m_pslverr) begin
+            fv_write_valid   <= 1'b0;
+            fv_write_pending <= 1'b0;
+        end
+    end
+end
+
+property p_write_data_integrity;
+    fv_write_pending && (m_ps == ACCESS) && m_pready && !m_pslverr
+    |->
+    (apb_top.slave_inst.mem[fv_write_addr] == fv_write_data);
+endproperty
+        
 endmodule
 
 // Bind statement
