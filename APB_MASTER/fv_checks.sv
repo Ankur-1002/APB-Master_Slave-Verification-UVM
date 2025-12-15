@@ -152,7 +152,102 @@ endproperty
         (s_prdata == fv_expected_rdata);
     endproperty
     a_read_data_integrity: assert property(p_read_data_integrity);
+
+
+            // ========================================
+    // END-TO-END DATA INTEGRITY (TOP-LEVEL PORTS)
+    // ========================================
     
+    // Auxiliary logic for tracking complete write-read cycles at top level
+    logic                    fv_e2e_write_done;
+    logic [ADDR_WIDTH-1:0]   fv_e2e_write_addr;
+    logic [DATA_WIDTH-1:0]   fv_e2e_write_data;
+    logic                    fv_e2e_read_pending;
+    
+    // Track completed write transactions from APB top interface
+    always_ff @(posedge APB_pclk or negedge APB_presetn) begin
+        if (!APB_presetn) begin
+            fv_e2e_write_done    <= 1'b0;
+            fv_e2e_write_addr    <= '0;
+            fv_e2e_write_data    <= '0;
+            fv_e2e_read_pending  <= 1'b0;
+        end else begin
+            // Capture write transaction from top-level ports
+            if (m_ps == SETUP && APB_rd_wr && APB_transfer) begin
+                fv_e2e_write_addr <= APB_write_addr;
+                fv_e2e_write_data <= APB_write_data;
+            end
+            
+            // Mark write as complete when transaction finishes successfully
+            if (fv_write_pending && m_ps == ACCESS && m_pready && !m_pslverr) begin
+                fv_e2e_write_done <= 1'b1;
+            end
+            
+            // Track if a read is initiated to the same address
+            if (fv_e2e_write_done && m_ps == SETUP && !APB_rd_wr && 
+                APB_transfer && (APB_read_addr == fv_e2e_write_addr)) begin
+                fv_e2e_read_pending <= 1'b1;
+            end
+            
+            // Clear when read completes
+            if (fv_e2e_read_pending && m_ps == ACCESS && m_pready) begin
+                fv_e2e_write_done   <= 1'b0;
+                fv_e2e_read_pending <= 1'b0;
+            end
+            
+            // Clear if write to different address occurs
+            if (fv_e2e_write_done && m_ps == SETUP && APB_rd_wr && 
+                (APB_write_addr != fv_e2e_write_addr)) begin
+                fv_e2e_write_done <= 1'b0;
+            end
+        end
+    end
+    
+    // ========================================
+    // CRITICAL: TOP-LEVEL DATA INTEGRITY ASSERTIONS
+    // ========================================
+    
+    // Property 1: Master write data reaches slave write data bus
+    property p_master_write_to_slave;
+        (m_ps == SETUP && m_pwrite) 
+        |->
+        (m_pwdata == APB_write_data);
+    endproperty
+    a_master_write_to_slave: assert property(p_master_write_to_slave);
+    
+    // Property 2: Master write address reaches slave address bus
+    property p_master_write_addr_to_slave;
+        (m_ps == SETUP && m_pwrite)
+        |->
+        (m_paddr == APB_write_addr);
+    endproperty
+    a_master_write_addr_to_slave: assert property(p_master_write_addr_to_slave);
+    
+    // Property 3: Master read address reaches slave address bus
+    property p_master_read_addr_to_slave;
+        (m_ps == SETUP && !m_pwrite)
+        |->
+        (m_paddr == APB_read_addr);
+    endproperty
+    a_master_read_addr_to_slave: assert property(p_master_read_addr_to_slave);
+    
+    // Property 4: Slave read data reaches master read data output
+    property p_slave_read_to_master;
+        (m_ps == ACCESS && !m_pwrite && m_pready)
+        |=>
+        (APB_read_data == $past(s_prdata));
+    endproperty
+    a_slave_read_to_master: assert property(p_slave_read_to_master);
+    
+    // Property 5: MAIN END-TO-END CHECK
+    // Data written via APB_write_data is read back via APB_read_data
+    property p_e2e_write_then_read_data_match;
+        fv_e2e_read_pending && (m_ps == ACCESS) && m_pready
+        |=>
+        (APB_read_data == fv_e2e_write_data);
+    endproperty
+    a_e2e_write_then_read_data_match: assert property(p_e2e_write_then_read_data_match);
+   
 endmodule
 
 // Bind statement
