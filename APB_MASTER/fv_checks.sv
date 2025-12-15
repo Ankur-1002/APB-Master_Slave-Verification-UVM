@@ -104,7 +104,55 @@ property p_write_data_integrity;
     |->
     (apb_top.slave_inst.mem[fv_write_addr] == fv_write_data);
 endproperty
-        
+
+
+
+    // ========================================
+    // DATA INTEGRITY CHECKS - READ OPERATIONS
+    // ========================================
+    
+    // Auxiliary logic for read transaction tracking
+    logic                    fv_read_valid;
+    logic [ADDR_WIDTH-1:0]   fv_read_addr;
+    logic [DATA_WIDTH-1:0]   fv_expected_rdata;
+    logic                    fv_read_pending;
+    
+    // Track read transaction initiation
+    always_ff @(posedge APB_pclk or negedge APB_presetn) begin
+        if (!APB_presetn) begin
+            fv_read_valid      <= 1'b0;
+            fv_read_addr       <= '0;
+            fv_expected_rdata  <= '0;
+            fv_read_pending    <= 1'b0;
+        end else begin
+            // Capture read transaction in SETUP phase
+            if (m_ps == SETUP && !m_pwrite) begin
+                fv_read_valid      <= 1'b1;
+                fv_read_addr       <= m_paddr;
+                fv_expected_rdata  <= apb_top.slave_inst.mem[m_paddr];
+                fv_read_pending    <= 1'b1;
+            end
+            // Clear when transaction completes
+            else if (fv_read_pending && m_ps == ACCESS && m_pready) begin
+                fv_read_valid      <= 1'b0;
+                fv_read_pending    <= 1'b0;
+            end
+            // Clear on idle
+            else if (m_ps == IDLE) begin
+                fv_read_valid      <= 1'b0;
+                fv_read_pending    <= 1'b0;
+            end
+        end
+    end
+    
+    // Read data integrity check - slave must return expected data
+    property p_read_data_integrity;
+        fv_read_pending && (m_ps == ACCESS) && m_pready
+        |->
+        (s_prdata == fv_expected_rdata);
+    endproperty
+    a_read_data_integrity: assert property(p_read_data_integrity);
+    
 endmodule
 
 // Bind statement
